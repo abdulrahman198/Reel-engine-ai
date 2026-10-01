@@ -1,25 +1,31 @@
-# Reel Engine AI v0.3
-A clean React/Vite foundation for an AI Reel production pipeline.
+# Reel Engine AI v0.4
 
-## Current
-- One React/Vite frontend (old duplicate entrypoint removed from architecture)
-- Arabic / German / English project planner
-- 30/45/60 second scene planning
-- Editable script
-- Provider-ready backend skeleton
-- Environment-variable placeholders; no secrets committed
+A modular AI short-video production engine.
 
-## Planned pipeline
-Topic → AI Script → Scene Director → Media → ElevenLabs Voice → Whisper Captions → FFmpeg/Remotion Render → QA → Human Approval
+## What works now
+- React/Vite creator dashboard
+- Arabic, German and English projects
+- 30/45/60 second planning
+- Real AI script + scene generation through the backend when `OPENAI_API_KEY` is configured
+- Safe demo fallback when no API key is configured
+- Structured scene timing, voiceover lines, visual-generation prompts and on-screen text
 
 ## Run
 ```bash
 npm install
+cp .env.example .env
+# Add OPENAI_API_KEY to .env
+npm run server
+# in a second terminal
 npm run dev
 ```
-Optional backend:
-```bash
-cp .env.example .env
-npm run server
-```
-API health: `http://localhost:8787/api/health`
+
+The API defaults to `http://localhost:8787`. Set `VITE_API_URL` when the backend is hosted elsewhere.
+
+## Pipeline
+Idea → AI Script → Scene Director → Voice → Captions → Media → Render → QA → Approval
+
+## Next
+v0.5 will add a voice-provider adapter (ElevenLabs first), audio files, transcription/caption timing, and render jobs.
+
+Never commit `.env` or API keys to GitHub.
