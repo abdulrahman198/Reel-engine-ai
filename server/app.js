@@ -8,6 +8,7 @@ import { writeFile } from 'node:fs/promises';
 import { HttpError, options, scenes, aspect, text, normalizePlan, draftPlan, demoPlan, planSchema, captionsFromAlignment, toSrt, parseSrt } from './core.js';
 import { AssetStore, Jobs, ProjectStore, jsonFile } from './storage.js';
 import { capabilities, demoImage, probe, renderVideo, importAudio } from './media.js';
+import { frontendOrigin } from './config.js';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 
@@ -26,16 +27,17 @@ export async function createApp({ env = process.env, openaiClient, fetchImpl = g
   const projects = new ProjectStore(config.dataDir);
   await jobs.init();
   const mediaCapabilities = await capabilities(config);
+  const allowedOrigin = frontendOrigin(env);
   const app = express(); app.disable('x-powered-by');
   app.use('/api', (req, res, next) => {
     const hosts = new Set(['localhost', '127.0.0.1', '[::1]']);
-    try { if (env.FRONTEND_ORIGIN) hosts.add(new URL(env.FRONTEND_ORIGIN).hostname); } catch { /* Invalid configuration is not an allowed host. */ }
+    if (allowedOrigin) hosts.add(new URL(allowedOrigin).hostname);
     if (!hosts.has(req.hostname)) return next(new HttpError(403, 'host_not_allowed', 'Use localhost, or configure FRONTEND_ORIGIN for your private host.'));
     res.set('Cache-Control', 'no-store');
     res.set('X-Content-Type-Options', 'nosniff');
     const origin = req.get('Origin');
     if (origin) {
-      let allowed = origin === env.FRONTEND_ORIGIN;
+      let allowed = origin === allowedOrigin;
       try { const u = new URL(origin); allowed ||= ['localhost', '127.0.0.1', '[::1]'].includes(u.hostname); } catch { /* Reject malformed origins. */ }
       if (!allowed) return next(new HttpError(403, 'origin_not_allowed'));
       res.set('Access-Control-Allow-Origin', origin); res.vary('Origin');

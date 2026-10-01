@@ -148,3 +148,47 @@ test('host checks block rebinding and voice choices do not leak credentials', as
   assert.deepEqual(value.voices,[{id:'voice1',name:'Voice one',language:'de'}]);
   assert.ok(!JSON.stringify(value).includes('private-test-value'));
 });
+
+function forwardedHealth(base, host, origin) {
+  return new Promise((resolve, reject) => httpGet(`${base}/api/health`, {
+    headers: { Host: host, ...(origin ? { Origin: origin } : {}) },
+  }, res => {
+    res.resume(); resolve({ status: res.statusCode, origin: res.headers['access-control-allow-origin'] });
+  }).on('error', reject));
+}
+
+test('Codespaces accepts its own forwarded host and origin, blocking other codespaces', async t => {
+  const { base, post } = await setup(t, { env: {
+    CODESPACES: 'true', CODESPACE_NAME: 'reel-private-abc',
+    GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN: 'app.github.dev', PORT: '8787',
+  } });
+  const host = 'reel-private-abc-8787.app.github.dev', origin = `https://${host}`;
+  assert.deepEqual(await forwardedHealth(base, host, origin), { status: 200, origin });
+  assert.equal((await forwardedHealth(base, 'another-space-8787.app.github.dev', origin)).status, 403);
+  assert.equal((await forwardedHealth(base, host, 'https://another-space-8787.app.github.dev')).status, 403);
+  assert.equal((await forwardedHealth(base, host, `http://${host}`)).status, 403);
+  const preflight = await fetch(`${base}/api/generate`, { method: 'OPTIONS', headers: { Origin: origin } });
+  assert.equal(preflight.status, 204);
+  const generated = await fetch(`${base}/api/generate`, { method: 'POST',
+    headers: { 'Content-Type': 'application/json', Origin: origin },
+    body: JSON.stringify({ topic: 'مشروعي من الموبايل', language: 'ar', duration: 30, aspect: '9:16' }),
+  });
+  assert.equal(generated.status, 200);
+  const project = await generated.json();
+  assert.equal((await post('/api/projects', { name: 'Mobile project', project })).status, 201);
+});
+
+test('private origin overrides Codespaces and incomplete metadata never allows a forwarded host', async t => {
+  const codespace = { CODESPACES: 'true', CODESPACE_NAME: 'reel-private-abc', GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN: 'forwarding.example' };
+  const { base } = await setup(t, { env: { ...codespace, FRONTEND_ORIGIN: 'https://private.example/' } });
+  assert.equal((await forwardedHealth(base, 'private.example', 'https://private.example')).status, 200);
+  assert.equal((await forwardedHealth(base, 'reel-private-abc-8787.forwarding.example')).status, 403);
+  for (const env of [
+    { ...codespace, CODESPACES: 'false' },
+    { ...codespace, GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN: '' },
+    { ...codespace, CODESPACE_NAME: 'invalid/name' },
+  ]) {
+    const instance = await setup(t, { env });
+    assert.equal((await forwardedHealth(instance.base, 'reel-private-abc-8787.forwarding.example')).status, 403);
+  }
+});

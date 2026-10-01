@@ -4,6 +4,16 @@ A working, single-user video studio: **idea → script → scene images → narr
 
 [دليل التشغيل بالعربي](START_HERE_AR.md)
 
+## Open from a phone
+
+[Open in GitHub Codespaces](https://codespaces.new/abdulrahman198/Reel-engine-ai)
+
+Sign in to GitHub, choose **Create codespace**, and wait for setup. The included dev container installs Node/FFmpeg/fonts, builds the app, and starts it automatically. Open **Reel Engine AI** on port **8787** using the **Open in Browser** notification or the **PORTS** panel. Enable your mobile browser's desktop-site option if the editor controls are cramped.
+
+Keep the forwarded port **Private**. The server recognizes only this codespace's exact forwarded hostname; no manual `FRONTEND_ORIGIN` is needed. No provider keys are required for demo plans, uploads and MP4 exports. Codespaces usage is subject to your GitHub quota and billing; it is a personal development environment, not permanent hosting. Stop/resume it at [github.com/codespaces](https://github.com/codespaces). Download your outputs and back up `data/` before deleting it.
+
+Existing codespaces need the updated files and **Codespaces: Rebuild Container** once to apply this configuration. For later app updates, run `git pull`, then `npm ci && npm run build`, and stop/resume the codespace. Startup logs are stored in `.runtime/server.log`.
+
 ## What works
 
 - Arabic, German and English interface; Arabic layout and script direction.

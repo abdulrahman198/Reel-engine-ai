@@ -1,0 +1,14 @@
+{
+  "name": "Reel Engine AI",
+  "build": { "dockerfile": "Dockerfile" },
+  "remoteUser": "node",
+  "forwardPorts": [8787],
+  "portsAttributes": {
+    "8787": { "label": "Reel Engine AI", "onAutoForward": "openBrowser" }
+  },
+  "postCreateCommand": "npm ci && npm run build",
+  "postStartCommand": "node scripts/codespace-start.mjs",
+  "customizations": {
+    "codespaces": { "openFiles": ["START_HERE_AR.md"] }
+  }
+}
