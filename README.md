@@ -12,7 +12,19 @@ Sign in to GitHub, choose **Create codespace**, and wait for setup. The included
 
 Keep the forwarded port **Private**. The server recognizes only this codespace's exact forwarded hostname; no manual `FRONTEND_ORIGIN` is needed. No provider keys are required for demo plans, uploads and MP4 exports. Codespaces usage is subject to your GitHub quota and billing; it is a personal development environment, not permanent hosting. Stop/resume it at [github.com/codespaces](https://github.com/codespaces). Download your outputs and back up `data/` before deleting it.
 
-Existing codespaces need the updated files and **Codespaces: Rebuild Container** once to apply this configuration. For later app updates, run `git pull`, then `npm ci && npm run build`, and stop/resume the codespace. Startup logs are stored in `.runtime/server.log`.
+Existing codespaces need the updated files and **Codespaces: Rebuild Container** once to apply this container configuration. For later updates or startup problems, use the command below. Startup logs are stored in `.runtime/server.log`.
+
+### Recover an existing codespace
+
+In the project terminal, run:
+
+```bash
+git pull --ff-only && npm run codespace
+```
+
+This installs pinned dependencies, builds the UI, restarts the managed project server, and checks the local API, HTML, JavaScript bundle and forwarded Host/Origin routing. It preserves `data/`; finish any active export before restarting. A stale PID is checked against the project's Node entry point and working directory before any process is stopped. If Git reports local changes, preserve them rather than resetting the checkout. Servers started manually in another terminal must be stopped there if they conflict with the managed server.
+
+`npm run codespace:check` performs the same readiness checks without starting or stopping anything. Local checks **do not verify the external GitHub tunnel or sign-in**. After they pass, open the printed forwarded URL. If the browser still returns 404/502, open **PORTS → 8787 → Change Port Protocol → HTTP**, keep **Port Visibility → Private**, and use **Open in Browser**. Add port 8787 if it is missing. The public-facing URL still uses HTTPS; HTTP describes the connection to the app inside the container. Resume a stopped codespace before trying its preview URL.
 
 ## What works
 

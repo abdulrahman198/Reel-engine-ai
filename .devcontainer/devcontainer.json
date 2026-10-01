@@ -4,7 +4,7 @@
   "remoteUser": "node",
   "forwardPorts": [8787],
   "portsAttributes": {
-    "8787": { "label": "Reel Engine AI", "onAutoForward": "openBrowser" }
+    "8787": { "label": "Reel Engine AI", "onAutoForward": "openBrowser", "protocol": "http" }
   },
   "postCreateCommand": "npm ci && npm run build",
   "postStartCommand": "node scripts/codespace-start.mjs",

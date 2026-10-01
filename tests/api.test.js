@@ -44,6 +44,25 @@ test('demo planning, bad requests, unknown API routes and origin checks', async 
   assert.equal((await fetch(`${base}/api/health`, { headers: { Origin: 'https://untrusted.example' } })).status, 403);
 });
 
+test('a frontend built after server startup becomes available without restarting', async t => {
+  const distDir = await mkdtemp(path.join(os.tmpdir(), 'reel-late-build-'));
+  t.after(() => rm(distDir, { recursive: true, force: true }));
+  const { base } = await setup(t, { distDir });
+  const before = await fetch(base);
+  assert.equal(before.status, 503);
+  assert.equal((await before.json()).error, 'frontend_not_built');
+  assert.equal((await fetch(`${base}/api/health`)).status, 200);
+  await mkdir(path.join(distDir, 'assets'));
+  await writeFile(path.join(distDir, 'index.html'), '<!doctype html><div id="root">Ready</div><script src="/assets/app.js"></script>');
+  await writeFile(path.join(distDir, 'assets/app.js'), 'console.log("ready");');
+  const after = await fetch(base);
+  assert.equal(after.status, 200);
+  assert.match(await after.text(), /id="root">Ready/);
+  const bundle = await fetch(`${base}/assets/app.js`);
+  assert.equal(bundle.status, 200);
+  assert.match(bundle.headers.get('content-type'), /javascript/);
+});
+
 test('image uploads are decoded, stored and retrievable; invalid images and IDs fail', async t => {
   const { base } = await setup(t);
   const png = await sharp({ create: { width: 80, height: 100, channels: 3, background: '#ff0033' } }).png().toBuffer();

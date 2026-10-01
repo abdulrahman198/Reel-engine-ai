@@ -12,7 +12,7 @@ import { frontendOrigin } from './config.js';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 
-export async function createApp({ env = process.env, openaiClient, fetchImpl = globalThis.fetch } = {}) {
+export async function createApp({ env = process.env, openaiClient, fetchImpl = globalThis.fetch, distDir = path.join(root, 'dist') } = {}) {
   const config = {
     ffmpeg: env.FFMPEG_BIN || 'ffmpeg', ffprobe: env.FFPROBE_BIN || 'ffprobe', font: env.FONT_NAME || 'DejaVu Sans',
     dataDir: path.resolve(env.DATA_DIR || path.join(root, 'data')),
@@ -218,11 +218,14 @@ export async function createApp({ env = process.env, openaiClient, fetchImpl = g
   });
 
   app.use('/api', (_, res) => res.status(404).json({ error: 'endpoint_not_found' }));
-  const dist = path.join(root, 'dist');
-  if (existsSync(path.join(dist, 'index.html'))) {
-    app.use(express.static(dist));
-    app.get(/.*/, (_, res) => res.sendFile(path.join(dist, 'index.html')));
-  }
+  // The build may finish after server startup, especially during Codespaces setup.
+  app.use(express.static(distDir));
+  app.get(/.*/, (_, res, next) => {
+    if (!existsSync(path.join(distDir, 'index.html'))) {
+      return next(new HttpError(503, 'frontend_not_built', 'Run npm run build in the project terminal, then refresh this page.'));
+    }
+    res.sendFile(path.join(distDir, 'index.html'));
+  });
   app.use((error, _req, res, _next) => {
     const status = Number.isInteger(error.status) && error.status >= 400 && error.status <= 599 ? error.status : 502;
     res.status(status).json({ error: error.code || (status === 400 ? 'invalid_request' : 'request_failed'), detail: safeMessage(error) });
