@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { retimeScenes } from '../client/scene-utils.js';
+import { retimeScenes, invalidateSceneImage } from '../client/scene-utils.js';
 
 test('retime scenes distributes the full duration evenly without gaps', () => {
   for (const duration of [30, 45, 60]) for (const count of [1, 2, 4, 5, 6]) {
@@ -18,4 +18,12 @@ test('retime scenes rejects invalid count and duration', () => {
   assert.throws(() => retimeScenes([], 30), RangeError);
   assert.throws(() => retimeScenes(Array.from({ length: 7 }, () => ({})), 30), RangeError);
   assert.throws(() => retimeScenes([{}], 0), RangeError);
+});
+
+test('editing one scene visual prompt invalidates only its matching image', () => {
+  const images = [{ id: 'a' }, { id: 'b' }, { id: 'c' }];
+  const next = invalidateSceneImage(images, 1);
+  assert.deepEqual(next, [images[0], null, images[2]]);
+  assert.deepEqual(images, [{ id: 'a' }, { id: 'b' }, { id: 'c' }]);
+  assert.throws(() => invalidateSceneImage(images, 3), RangeError);
 });
