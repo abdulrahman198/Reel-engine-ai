@@ -4,6 +4,7 @@ import { Film, Mic, Subtitles, Play, Sparkles, Download, ImagePlus, Upload, Chec
 import { request, jsonRequest, snapshot, downloadPlan, url } from './client/api.js';
 import { translator } from './client/i18n.js';
 import { creatorTemplates } from './client/templates.js';
+import { retimeScenes } from './client/scene-utils.js';
 import './style.css';
 
 const DRAFT = 'reel-engine-v07-draft';
@@ -129,25 +130,22 @@ function App() {
     patch({ video:null, activeJob:{ id:job.id, type:'render' } });
   }); }
   function editScript(script) { patch({ project:{ ...project,script }, audio:audio?.mode === 'upload' ? audio:null, video:null }); }
-  function retimeScenes(items) {
-    return items.map((scene,i) => ({ ...scene, start:+(i * project.duration / items.length).toFixed(3), end:+((i + 1) * project.duration / items.length).toFixed(3) }));
-  }
-  function editScene(index,field,value) { patch({ project:{ ...project, scenes:retimeScenes(project.scenes.map((scene,i) => i === index ? { ...scene,[field]:value } : scene)) }, video:null }); }
+  function editScene(index,field,value) { patch({ project:{ ...project, scenes:retimeScenes(project.scenes.map((scene,i) => i === index ? { ...scene,[field]:value } : scene), project.duration) }, video:null }); }
   function addScene() {
     if (!project || project.scenes.length >= 6) return;
-    const scenes = retimeScenes([...project.scenes, { title:`Scene ${project.scenes.length + 1}`, voiceover:'', visualPrompt:'', onScreenText:'' }]);
+    const scenes = retimeScenes([...project.scenes, { title:`Scene ${project.scenes.length + 1}`, voiceover:'', visualPrompt:'', onScreenText:'' }], project.duration);
     patch({ project:{ ...project, scenes }, images:[...images,null], audio:null, captions:null, video:null });
   }
   function removeScene(index) {
     if (!project || project.scenes.length <= 1) return;
-    const scenes = retimeScenes(project.scenes.filter((_,i) => i !== index));
+    const scenes = retimeScenes(project.scenes.filter((_,i) => i !== index), project.duration);
     patch({ project:{ ...project, scenes }, images:images.filter((_,i) => i !== index), audio:null, captions:null, video:null });
   }
   function moveScene(index,delta) {
     const target=index+delta; if (!project || target < 0 || target >= project.scenes.length) return;
     const scenes=[...project.scenes]; [scenes[index],scenes[target]]=[scenes[target],scenes[index]];
     const reorderedImages=[...images]; [reorderedImages[index],reorderedImages[target]]=[reorderedImages[target],reorderedImages[index]];
-    patch({ project:{ ...project, scenes:retimeScenes(scenes) }, images:reorderedImages, audio:null, captions:null, video:null });
+    patch({ project:{ ...project, scenes:retimeScenes(scenes, project.duration) }, images:reorderedImages, audio:null, captions:null, video:null });
   }
   const steps = [[t('script'),Sparkles,!!project], [t('images'),Film,completeImages], [t('voice'),Mic,!!audio], [t('captions'),Subtitles,hasCaptions], [t('video'),Play,!!video]];
   const fileInput = (accept,action,label,Icon = Upload) => <label className={`button secondary upload ${busy ? 'disabled':''}`}><Icon size={16} />{label}<input aria-label={label} type="file" accept={accept} disabled={busy} onChange={e => { action(e.target.files?.[0]); e.target.value = ''; }} /></label>;
