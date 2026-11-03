@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client';
 import { Film, Mic, Subtitles, Play, Sparkles, Download, ImagePlus, Upload, CheckCircle2, Plus, Trash2, RefreshCw, Clapperboard, FolderOpen, Save } from 'lucide-react';
 import { request, jsonRequest, snapshot, downloadPlan, url } from './client/api.js';
 import { translator } from './client/i18n.js';
+import { creatorTemplates } from './client/templates.js';
 import './style.css';
 
 const DRAFT = 'reel-engine-v07-draft';
@@ -81,6 +82,11 @@ function App() {
     await save(); const value = await jsonRequest('/api/projects', { project: plan, name }); setDoc(value); await refreshProjects();
   }
   function generate() { void perform(t('creatingPlan'), async () => createDocument(await jsonRequest('/api/generate', { topic, language, duration, style, aspect }))); }
+  function applyTemplate(template) {
+    setTopic(template.topic[ui] || template.topic.en);
+    setStyle(template.style); setDuration(template.duration); setAspect(template.aspect);
+    setLanguage(ui === 'ar' || ui === 'de' ? ui : 'en');
+  }
   function openProject(id) { if (id) void perform(t('projects'), async () => { await save(); setDoc(await request(`/api/projects/${id}`)); setProgress(null); }); }
   function newProject() { void perform(t('newProject'), async () => { await save(); setDoc(null); setTopic(''); setProgress(null); }); }
   function deleteProject() {
@@ -135,7 +141,7 @@ function App() {
       <div className="project-toolbar"><FolderOpen size={20} /><select aria-label={t('projects')} value={doc?.id || ''} disabled={busy} onChange={e => openProject(e.target.value)}><option value="">{t('chooseProject')}</option>{projectList.map(p => <option value={p.id} key={p.id}>{p.name}</option>)}</select><button className="secondary" disabled={busy} onClick={newProject}><Plus size={17} />{t('newProject')}</button>{fileInput('.json,application/json',importPlan,t('importPlan'))}</div>
       <details className="mobile-connection"><summary>{t('connection')} · {health ? t('connected'):t('offline')}</summary>{connections}</details>
       {connectionError && <p className="error" role="alert">{connectionError}</p>}{saveError && <p className="error" role="alert">{saveError} <button className="secondary" onClick={() => { void save().catch(() => {}); }}>{t('retrySave')}</button></p>}
-      {!doc && <div className="composer"><label htmlFor="topic">{t('idea')}</label><textarea id="topic" disabled={busy} value={topic} onChange={e => setTopic(e.target.value)} placeholder={t('placeholder')} maxLength={2000} dir="auto" /><div className="row">
+      {!doc && <div className="composer"><div className="template-heading"><div><h2>{t('templateTitle')}</h2><p className="muted">{t('templateHelp')}</p></div></div><div className="template-grid">{creatorTemplates.map(template => <button type="button" className="template-card secondary" key={template.id} disabled={busy} onClick={() => applyTemplate(template)}><strong>{template.label[ui] || template.label.en}</strong><span>{template.description[ui] || template.description.en}</span></button>)}</div><label htmlFor="topic">{t('idea')}</label><textarea id="topic" disabled={busy} value={topic} onChange={e => setTopic(e.target.value)} placeholder={t('placeholder')} maxLength={2000} dir="auto" /><div className="row">
         <label>{t('language')}<select aria-label={t('language')} disabled={busy} value={language} onChange={e => setLanguage(e.target.value)}><option value="de">Deutsch</option><option value="ar">العربية</option><option value="en">English</option></select></label>
         <label>{t('duration')}<select aria-label={t('duration')} disabled={busy} value={duration} onChange={e => setDuration(+e.target.value)}>{[30,45,60].map(n => <option key={n} value={n}>{n} {t('seconds')}</option>)}</select></label>
         <label>{t('style')}<select aria-label={t('style')} disabled={busy} value={style} onChange={e => setStyle(e.target.value)}>{['Cinematic documentary','Motion graphics','Educational','Fast social'].map(s => <option key={s}>{s}</option>)}</select></label>
