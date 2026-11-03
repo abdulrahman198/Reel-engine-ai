@@ -7,3 +7,8 @@ export function retimeScenes(items, duration) {
     end: +((i + 1) * duration / items.length).toFixed(3),
   }));
 }
+
+export function invalidateSceneImage(images, index) {
+  if (!Array.isArray(images) || !Number.isInteger(index) || index < 0 || index >= images.length) throw new RangeError('Scene image index is out of range.');
+  return images.map((image, i) => i === index ? null : image);
+}
