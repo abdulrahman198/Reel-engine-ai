@@ -130,7 +130,7 @@ function App() {
     patch({ video:null, activeJob:{ id:job.id, type:'render' } });
   }); }
   function editScript(script) { patch({ project:{ ...project,script }, audio:audio?.mode === 'upload' ? audio:null, video:null }); }
-  function editScene(index,field,value) { patch({ project:{ ...project, scenes:retimeScenes(project.scenes.map((scene,i) => i === index ? { ...scene,[field]:value } : scene), project.duration) }, video:null }); }
+  function editScene(index,field,value) { const nextImages = field === 'visualPrompt' ? images.map((image,i) => i === index ? null : image) : images; patch({ project:{ ...project, scenes:retimeScenes(project.scenes.map((scene,i) => i === index ? { ...scene,[field]:value } : scene), project.duration) }, images:nextImages, video:null }); }
   function addScene() {
     if (!project || project.scenes.length >= 6) return;
     const scenes = retimeScenes([...project.scenes, { title:`Scene ${project.scenes.length + 1}`, voiceover:'', visualPrompt:'', onScreenText:'' }], project.duration);
