@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
-import { Film, Mic, Subtitles, Play, Sparkles, Download, ImagePlus, Upload, CheckCircle2, Plus, Trash2, RefreshCw, Clapperboard, FolderOpen, Save } from 'lucide-react';
+import { Film, Mic, Subtitles, Play, Sparkles, Download, ImagePlus, Upload, CheckCircle2, Plus, Trash2, RefreshCw, Clapperboard, FolderOpen, Save, ArrowUp, ArrowDown } from 'lucide-react';
 import { request, jsonRequest, snapshot, downloadPlan, url } from './client/api.js';
 import { translator } from './client/i18n.js';
 import { creatorTemplates } from './client/templates.js';
@@ -129,7 +129,26 @@ function App() {
     patch({ video:null, activeJob:{ id:job.id, type:'render' } });
   }); }
   function editScript(script) { patch({ project:{ ...project,script }, audio:audio?.mode === 'upload' ? audio:null, video:null }); }
-  function editScene(index,field,value) { patch({ project:{ ...project, scenes:project.scenes.map((scene,i) => i === index ? { ...scene,[field]:value } : scene) }, video:null }); }
+  function retimeScenes(items) {
+    return items.map((scene,i) => ({ ...scene, start:+(i * project.duration / items.length).toFixed(3), end:+((i + 1) * project.duration / items.length).toFixed(3) }));
+  }
+  function editScene(index,field,value) { patch({ project:{ ...project, scenes:retimeScenes(project.scenes.map((scene,i) => i === index ? { ...scene,[field]:value } : scene)) }, video:null }); }
+  function addScene() {
+    if (!project || project.scenes.length >= 6) return;
+    const scenes = retimeScenes([...project.scenes, { title:`Scene ${project.scenes.length + 1}`, voiceover:'', visualPrompt:'', onScreenText:'' }]);
+    patch({ project:{ ...project, scenes }, images:[...images,null], audio:null, captions:null, video:null });
+  }
+  function removeScene(index) {
+    if (!project || project.scenes.length <= 1) return;
+    const scenes = retimeScenes(project.scenes.filter((_,i) => i !== index));
+    patch({ project:{ ...project, scenes }, images:images.filter((_,i) => i !== index), audio:null, captions:null, video:null });
+  }
+  function moveScene(index,delta) {
+    const target=index+delta; if (!project || target < 0 || target >= project.scenes.length) return;
+    const scenes=[...project.scenes]; [scenes[index],scenes[target]]=[scenes[target],scenes[index]];
+    const reorderedImages=[...images]; [reorderedImages[index],reorderedImages[target]]=[reorderedImages[target],reorderedImages[index]];
+    patch({ project:{ ...project, scenes:retimeScenes(scenes) }, images:reorderedImages, audio:null, captions:null, video:null });
+  }
   const steps = [[t('script'),Sparkles,!!project], [t('images'),Film,completeImages], [t('voice'),Mic,!!audio], [t('captions'),Subtitles,hasCaptions], [t('video'),Play,!!video]];
   const fileInput = (accept,action,label,Icon = Upload) => <label className={`button secondary upload ${busy ? 'disabled':''}`}><Icon size={16} />{label}<input aria-label={label} type="file" accept={accept} disabled={busy} onChange={e => { action(e.target.files?.[0]); e.target.value = ''; }} /></label>;
   const connections = <><p>{health ? t('connected'):t('offline')}</p>{health && <><p>{t(health.providers.ai ? 'aiReady':'aiDemo')}</p><p>{t(health.providers.voice ? 'voiceReady':'voiceMissing')}</p><p>{t(health.render.ffmpeg && health.render.ffprobe ? 'renderReady':'renderMissing')}</p></>}<button className="secondary" onClick={checkConnection}><RefreshCw size={15} />{t('check')}</button></>;
@@ -155,8 +174,8 @@ function App() {
         {health?.providers.voice && <div className="row voice-picker"><label>{t('voiceId')}<input aria-label={t('voiceId')} dir="ltr" value={voiceId} placeholder={health.providers.defaultVoice || t('voiceDefault')} onChange={e => setVoiceId(e.target.value)} disabled={busy} list="voices" /><datalist id="voices">{voices.map(v => <option key={v.id} value={v.id}>{v.name}</option>)}</datalist></label><button className="secondary" disabled={busy} onClick={() => { void perform(t('loadVoices'),async () => setVoices((await request('/api/voices')).voices)); }}>{t('loadVoices')}</button></div>}
         <div className="row"><button onClick={makeVoice} disabled={busy || !health?.providers.voice || !(voiceId || health?.providers.defaultVoice) || !project.script.trim()}><Mic size={17} />{t('generateVoice')}</button>{fileInput('audio/*,.mp3,.wav,.m4a,.ogg,.flac,.webm',uploadAudio,t('uploadAudio'))}</div><p className="muted">{t('voiceHelp')} {t('audioFormats')}</p>
         {audio && <><audio aria-label={t('narration')} controls src={url(audio.url)} /><div className="row"><a className="button secondary" href={url(`${audio.url}?download=1`)}><Download size={16} />{t('downloadAudio')}</a><button className="text-button" disabled={busy} onClick={() => patch({ audio:null,video:null })}>{t('removeAudio')}</button></div></>}
-        <div className="card-heading scenes-heading"><h2>02 / {t('scenes')}</h2><button className="secondary" disabled={busy || project.scenes.some(s => !s.visualPrompt.trim())} onClick={makeImages}><ImagePlus size={17} />{t(health?.providers.images ? 'makeImages':'demoImages')}</button></div><p className="muted">{project.aspect} · {t('imageHelp')}</p>
-        {project.scenes.map((scene,i) => <div className="scene" key={i}><div className="scene-head"><b>{String(i+1).padStart(2,'0')}</b><input aria-label={`${t('sceneTitle')} ${i+1}`} value={scene.title} disabled={busy} maxLength={160} onChange={e => editScene(i,'title',e.target.value)} /><small dir="ltr">{scene.start}s–{scene.end}s</small></div><div className="scene-body">
+        <div className="card-heading scenes-heading"><h2>02 / {t('scenes')} <span className="scene-count">{project.scenes.length}/6</span></h2><div className="scene-actions"><button className="secondary" disabled={busy || project.scenes.length >= 6} onClick={addScene}><Plus size={16}/>{t('addScene')}</button><button className="secondary" disabled={busy || project.scenes.some(s => !s.visualPrompt.trim())} onClick={makeImages}><ImagePlus size={17} />{t(health?.providers.images ? 'makeImages':'demoImages')}</button></div></div><p className="muted">{project.aspect} · {t('imageHelp')}</p>
+        {project.scenes.map((scene,i) => <div className="scene" key={i}><div className="scene-head"><b>{String(i+1).padStart(2,'0')}</b><input aria-label={`${t('sceneTitle')} ${i+1}`} value={scene.title} disabled={busy} maxLength={160} onChange={e => editScene(i,'title',e.target.value)} /><small dir="ltr">{scene.start}s–{scene.end}s</small><div className="scene-order"><button className="icon-button secondary" title={t('moveUp')} aria-label={t('moveUp')} disabled={busy || i===0} onClick={() => moveScene(i,-1)}><ArrowUp size={14}/></button><button className="icon-button secondary" title={t('moveDown')} aria-label={t('moveDown')} disabled={busy || i===project.scenes.length-1} onClick={() => moveScene(i,1)}><ArrowDown size={14}/></button><button className="icon-button secondary scene-delete" title={t('removeScene')} aria-label={t('removeScene')} disabled={busy || project.scenes.length<=1} onClick={() => removeScene(i)}><Trash2 size={14}/></button></div></div><div className="scene-body">
           {images[i] && <div className={`image-preview ${project.aspect === '16:9' ? 'landscape':''}`}><img src={url(images[i].url)} alt={scene.title} /><span>{t(images[i].mode === 'demo' ? 'demoCard':images[i].mode === 'upload' ? 'yourImage':'aiImage')}</span></div>}
           <div className="scene-fields"><label>{t('prompt')}<textarea className="prompt" aria-label={`${t('prompt')} ${i+1}`} disabled={busy} value={scene.visualPrompt} maxLength={4000} dir="auto" onChange={e => editScene(i,'visualPrompt',e.target.value)} /></label><label>{t('screenText')}<input aria-label={`${t('screenText')} ${i+1}`} dir="auto" disabled={busy} value={scene.onScreenText} maxLength={160} onChange={e => editScene(i,'onScreenText',e.target.value)} /></label>{fileInput('image/png,image/jpeg,image/webp',file => uploadImage(i,file),t('uploadImage'))}</div></div></div>)}
       </article><article className="export-panel"><h2>03 / {t('export')}</h2><p className="muted">{project.aspect} · {project.duration} {t('seconds')} · 30 fps</p><div className="status-list"><p>{completeImages ? '✓':'○'} {t('images')}</p><p>{audio ? '✓':'○'} {t('narration')} {!audio && `(${t('optional')})`}</p><p>{hasCaptions ? '✓':'○'} {t('captions')}</p></div>
