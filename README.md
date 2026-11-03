@@ -37,6 +37,7 @@ This installs pinned dependencies, builds the UI, restarts the managed project s
 ## What works
 
 - Arabic, German and English interface; Arabic layout and script direction.
+- Four multilingual quick-start formats: cinematic documentary, history and memory, explainer, and awareness campaign. Presets prefill the brief, language, duration and aspect ratio; every field remains editable.
 - AI script and scene planning with OpenAI structured outputs, or an explicitly labelled demo plan without a key.
 - Multiple projects, automatic server saves and a browser draft backup. Export/import the script and scene plan as JSON.
 - Editable script, image prompts, scene titles and on-screen text.
@@ -47,6 +48,10 @@ This installs pinned dependencies, builds the UI, restarts the managed project s
 - Job progress and reconnecting to the same export after a browser refresh. Interrupted server jobs are marked failed with a retry message.
 
 This version animates **still images**. It does not generate moving footage with Flow, Veo or Kling. Scene cuts currently share equal time; they are not aligned to individual sentences. Uploaded audio is not automatically transcribed or translated: import an SRT file for it. ElevenLabs-generated narration supplies its own subtitle timing.
+
+## Quality checks
+
+GitHub Actions runs the automated test suite and frontend production build on pushes to the development branch and pull requests to `main`. The CI environment installs FFmpeg so audio/media integration tests run with the same system dependency expected by the app.
 
 ## Quick start
 
