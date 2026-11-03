@@ -4,7 +4,7 @@ import { Film, Mic, Subtitles, Play, Sparkles, Download, ImagePlus, Upload, Chec
 import { request, jsonRequest, snapshot, downloadPlan, url } from './client/api.js';
 import { translator } from './client/i18n.js';
 import { creatorTemplates } from './client/templates.js';
-import { retimeScenes } from './client/scene-utils.js';
+import { retimeScenes, invalidateSceneImage } from './client/scene-utils.js';
 import './style.css';
 
 const DRAFT = 'reel-engine-v07-draft';
@@ -130,7 +130,7 @@ function App() {
     patch({ video:null, activeJob:{ id:job.id, type:'render' } });
   }); }
   function editScript(script) { patch({ project:{ ...project,script }, audio:audio?.mode === 'upload' ? audio:null, video:null }); }
-  function editScene(index,field,value) { const nextImages = field === 'visualPrompt' ? images.map((image,i) => i === index ? null : image) : images; patch({ project:{ ...project, scenes:retimeScenes(project.scenes.map((scene,i) => i === index ? { ...scene,[field]:value } : scene), project.duration) }, images:nextImages, video:null }); }
+  function editScene(index,field,value) { const nextImages = field === 'visualPrompt' ? invalidateSceneImage(images,index) : images; patch({ project:{ ...project, scenes:retimeScenes(project.scenes.map((scene,i) => i === index ? { ...scene,[field]:value } : scene), project.duration) }, images:nextImages, video:null }); }
   function addScene() {
     if (!project || project.scenes.length >= 6) return;
     const scenes = retimeScenes([...project.scenes, { title:`Scene ${project.scenes.length + 1}`, voiceover:'', visualPrompt:'', onScreenText:'' }], project.duration);
