@@ -205,7 +205,7 @@ export async function createApp({ env = process.env, openaiClient, fetchImpl = g
     const job = jobs.get(req.params.id);
     if (job.type !== 'render' || job.status !== 'completed') throw new HttpError(409, 'video_not_ready');
     const file = path.join(jobs.dir(job.id), 'video.mp4');
-    if (req.query.download === '1') res.download(file, 'reel-engine-video.mp4'); else res.sendFile(file);
+    if (req.query.download === '1') res.download(file, 'handala-studio-video.mp4'); else res.sendFile(file);
   });
   app.get('/api/assets/:id/file', async (req, res) => {
     const asset = await assets.get(req.params.id);

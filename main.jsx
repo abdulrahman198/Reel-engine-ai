@@ -1,8 +1,10 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
-import { Film, Mic, Subtitles, Play, Sparkles, Download, ImagePlus, Upload, CheckCircle2, Plus, Trash2, RefreshCw, Clapperboard, FolderOpen, Save } from 'lucide-react';
+import { Film, Mic, Subtitles, Play, Sparkles, Download, ImagePlus, Upload, CheckCircle2, Plus, Trash2, RefreshCw, Clapperboard, FolderOpen, Save, ArrowUp, ArrowDown } from 'lucide-react';
 import { request, jsonRequest, snapshot, downloadPlan, url } from './client/api.js';
 import { translator } from './client/i18n.js';
+import { creatorTemplates } from './client/templates.js';
+import { retimeScenes, invalidateSceneImage } from './client/scene-utils.js';
 import './style.css';
 
 const DRAFT = 'reel-engine-v07-draft';
@@ -81,6 +83,11 @@ function App() {
     await save(); const value = await jsonRequest('/api/projects', { project: plan, name }); setDoc(value); await refreshProjects();
   }
   function generate() { void perform(t('creatingPlan'), async () => createDocument(await jsonRequest('/api/generate', { topic, language, duration, style, aspect }))); }
+  function applyTemplate(template) {
+    setTopic(template.topic[ui] || template.topic.en);
+    setStyle(template.style); setDuration(template.duration); setAspect(template.aspect);
+    setLanguage(ui === 'ar' || ui === 'de' ? ui : 'en');
+  }
   function openProject(id) { if (id) void perform(t('projects'), async () => { await save(); setDoc(await request(`/api/projects/${id}`)); setProgress(null); }); }
   function newProject() { void perform(t('newProject'), async () => { await save(); setDoc(null); setTopic(''); setProgress(null); }); }
   function deleteProject() {
@@ -123,19 +130,35 @@ function App() {
     patch({ video:null, activeJob:{ id:job.id, type:'render' } });
   }); }
   function editScript(script) { patch({ project:{ ...project,script }, audio:audio?.mode === 'upload' ? audio:null, video:null }); }
-  function editScene(index,field,value) { patch({ project:{ ...project, scenes:project.scenes.map((scene,i) => i === index ? { ...scene,[field]:value } : scene) }, video:null }); }
+  function editScene(index,field,value) { const nextImages = field === 'visualPrompt' ? invalidateSceneImage(images,index) : images; patch({ project:{ ...project, scenes:retimeScenes(project.scenes.map((scene,i) => i === index ? { ...scene,[field]:value } : scene), project.duration) }, images:nextImages, video:null }); }
+  function addScene() {
+    if (!project || project.scenes.length >= 6) return;
+    const scenes = retimeScenes([...project.scenes, { title:`Scene ${project.scenes.length + 1}`, voiceover:'', visualPrompt:'', onScreenText:'' }], project.duration);
+    patch({ project:{ ...project, scenes }, images:[...images,null], audio:null, captions:null, video:null });
+  }
+  function removeScene(index) {
+    if (!project || project.scenes.length <= 1) return;
+    const scenes = retimeScenes(project.scenes.filter((_,i) => i !== index), project.duration);
+    patch({ project:{ ...project, scenes }, images:images.filter((_,i) => i !== index), audio:null, captions:null, video:null });
+  }
+  function moveScene(index,delta) {
+    const target=index+delta; if (!project || target < 0 || target >= project.scenes.length) return;
+    const scenes=[...project.scenes]; [scenes[index],scenes[target]]=[scenes[target],scenes[index]];
+    const reorderedImages=[...images]; [reorderedImages[index],reorderedImages[target]]=[reorderedImages[target],reorderedImages[index]];
+    patch({ project:{ ...project, scenes:retimeScenes(scenes, project.duration) }, images:reorderedImages, audio:null, captions:null, video:null });
+  }
   const steps = [[t('script'),Sparkles,!!project], [t('images'),Film,completeImages], [t('voice'),Mic,!!audio], [t('captions'),Subtitles,hasCaptions], [t('video'),Play,!!video]];
   const fileInput = (accept,action,label,Icon = Upload) => <label className={`button secondary upload ${busy ? 'disabled':''}`}><Icon size={16} />{label}<input aria-label={label} type="file" accept={accept} disabled={busy} onChange={e => { action(e.target.files?.[0]); e.target.value = ''; }} /></label>;
   const connections = <><p>{health ? t('connected'):t('offline')}</p>{health && <><p>{t(health.providers.ai ? 'aiReady':'aiDemo')}</p><p>{t(health.providers.voice ? 'voiceReady':'voiceMissing')}</p><p>{t(health.render.ffmpeg && health.render.ffprobe ? 'renderReady':'renderMissing')}</p></>}<button className="secondary" onClick={checkConnection}><RefreshCw size={15} />{t('check')}</button></>;
 
   return <main>
-    <aside><div className="brand"><Clapperboard size={28} /><h2>REEL <span>ENGINE AI</span></h2></div><p className="version">v0.7 · {t('workspace')}</p><div className="side-note">{t('savedHelp')}</div><div className="providers"><h3>{t('connection')}</h3>{connections}</div><details className="setup"><summary>{t('settings')}</summary><p>{t('setupHelp')}</p><a href="https://github.com/abdulrahman198/Reel-engine-ai#readme" target="_blank" rel="noreferrer">README</a></details></aside>
+    <aside><div className="brand"><Clapperboard size={28} /><h2>HANDALA <span>STUDIO</span></h2></div><p className="version">v0.7 · {t('workspace')}</p><div className="side-note">{t('savedHelp')}</div><div className="providers"><h3>{t('connection')}</h3>{connections}</div><details className="setup"><summary>{t('settings')}</summary><p>{t('setupHelp')}</p><a href="https://github.com/abdulrahman198/Reel-engine-ai#readme" target="_blank" rel="noreferrer">README</a></details></aside>
     <section className="workspace">
-      <header><div><small className="eyebrow">REEL ENGINE AI / STUDIO</small><h1>{t('heading')}</h1></div><select className="ui-language" aria-label="Interface language" value={ui} onChange={e => setUi(e.target.value)}><option value="ar">العربية</option><option value="de">Deutsch</option><option value="en">English</option></select></header>
+      <header><div><small className="eyebrow">HANDALA STUDIO / CREATOR WORKSPACE</small><h1>{t('heading')}</h1></div><select className="ui-language" aria-label="Interface language" value={ui} onChange={e => setUi(e.target.value)}><option value="ar">العربية</option><option value="de">Deutsch</option><option value="en">English</option></select></header>
       <div className="project-toolbar"><FolderOpen size={20} /><select aria-label={t('projects')} value={doc?.id || ''} disabled={busy} onChange={e => openProject(e.target.value)}><option value="">{t('chooseProject')}</option>{projectList.map(p => <option value={p.id} key={p.id}>{p.name}</option>)}</select><button className="secondary" disabled={busy} onClick={newProject}><Plus size={17} />{t('newProject')}</button>{fileInput('.json,application/json',importPlan,t('importPlan'))}</div>
       <details className="mobile-connection"><summary>{t('connection')} · {health ? t('connected'):t('offline')}</summary>{connections}</details>
       {connectionError && <p className="error" role="alert">{connectionError}</p>}{saveError && <p className="error" role="alert">{saveError} <button className="secondary" onClick={() => { void save().catch(() => {}); }}>{t('retrySave')}</button></p>}
-      {!doc && <div className="composer"><label htmlFor="topic">{t('idea')}</label><textarea id="topic" disabled={busy} value={topic} onChange={e => setTopic(e.target.value)} placeholder={t('placeholder')} maxLength={2000} dir="auto" /><div className="row">
+      {!doc && <div className="composer"><div className="template-heading"><div><h2>{t('templateTitle')}</h2><p className="muted">{t('templateHelp')}</p></div></div><div className="template-grid">{creatorTemplates.map(template => <button type="button" className="template-card secondary" key={template.id} disabled={busy} onClick={() => applyTemplate(template)}><strong>{template.label[ui] || template.label.en}</strong><span>{template.description[ui] || template.description.en}</span></button>)}</div><label htmlFor="topic">{t('idea')}</label><textarea id="topic" disabled={busy} value={topic} onChange={e => setTopic(e.target.value)} placeholder={t('placeholder')} maxLength={2000} dir="auto" /><div className="row">
         <label>{t('language')}<select aria-label={t('language')} disabled={busy} value={language} onChange={e => setLanguage(e.target.value)}><option value="de">Deutsch</option><option value="ar">العربية</option><option value="en">English</option></select></label>
         <label>{t('duration')}<select aria-label={t('duration')} disabled={busy} value={duration} onChange={e => setDuration(+e.target.value)}>{[30,45,60].map(n => <option key={n} value={n}>{n} {t('seconds')}</option>)}</select></label>
         <label>{t('style')}<select aria-label={t('style')} disabled={busy} value={style} onChange={e => setStyle(e.target.value)}>{['Cinematic documentary','Motion graphics','Educational','Fast social'].map(s => <option key={s}>{s}</option>)}</select></label>
@@ -149,8 +172,8 @@ function App() {
         {health?.providers.voice && <div className="row voice-picker"><label>{t('voiceId')}<input aria-label={t('voiceId')} dir="ltr" value={voiceId} placeholder={health.providers.defaultVoice || t('voiceDefault')} onChange={e => setVoiceId(e.target.value)} disabled={busy} list="voices" /><datalist id="voices">{voices.map(v => <option key={v.id} value={v.id}>{v.name}</option>)}</datalist></label><button className="secondary" disabled={busy} onClick={() => { void perform(t('loadVoices'),async () => setVoices((await request('/api/voices')).voices)); }}>{t('loadVoices')}</button></div>}
         <div className="row"><button onClick={makeVoice} disabled={busy || !health?.providers.voice || !(voiceId || health?.providers.defaultVoice) || !project.script.trim()}><Mic size={17} />{t('generateVoice')}</button>{fileInput('audio/*,.mp3,.wav,.m4a,.ogg,.flac,.webm',uploadAudio,t('uploadAudio'))}</div><p className="muted">{t('voiceHelp')} {t('audioFormats')}</p>
         {audio && <><audio aria-label={t('narration')} controls src={url(audio.url)} /><div className="row"><a className="button secondary" href={url(`${audio.url}?download=1`)}><Download size={16} />{t('downloadAudio')}</a><button className="text-button" disabled={busy} onClick={() => patch({ audio:null,video:null })}>{t('removeAudio')}</button></div></>}
-        <div className="card-heading scenes-heading"><h2>02 / {t('scenes')}</h2><button className="secondary" disabled={busy || project.scenes.some(s => !s.visualPrompt.trim())} onClick={makeImages}><ImagePlus size={17} />{t(health?.providers.images ? 'makeImages':'demoImages')}</button></div><p className="muted">{project.aspect} · {t('imageHelp')}</p>
-        {project.scenes.map((scene,i) => <div className="scene" key={i}><div className="scene-head"><b>{String(i+1).padStart(2,'0')}</b><input aria-label={`${t('sceneTitle')} ${i+1}`} value={scene.title} disabled={busy} maxLength={160} onChange={e => editScene(i,'title',e.target.value)} /><small dir="ltr">{scene.start}s–{scene.end}s</small></div><div className="scene-body">
+        <div className="card-heading scenes-heading"><h2>02 / {t('scenes')} <span className="scene-count">{project.scenes.length}/6</span></h2><div className="scene-actions"><button className="secondary" disabled={busy || project.scenes.length >= 6} onClick={addScene}><Plus size={16}/>{t('addScene')}</button><button className="secondary" disabled={busy || project.scenes.some(s => !s.visualPrompt.trim())} onClick={makeImages}><ImagePlus size={17} />{t(health?.providers.images ? 'makeImages':'demoImages')}</button></div></div><p className="muted">{project.aspect} · {t('imageHelp')}</p>
+        {project.scenes.map((scene,i) => <div className="scene" key={i}><div className="scene-head"><b>{String(i+1).padStart(2,'0')}</b><input aria-label={`${t('sceneTitle')} ${i+1}`} value={scene.title} disabled={busy} maxLength={160} onChange={e => editScene(i,'title',e.target.value)} /><small dir="ltr">{scene.start}s–{scene.end}s</small><div className="scene-order"><button className="icon-button secondary" title={t('moveUp')} aria-label={t('moveUp')} disabled={busy || i===0} onClick={() => moveScene(i,-1)}><ArrowUp size={14}/></button><button className="icon-button secondary" title={t('moveDown')} aria-label={t('moveDown')} disabled={busy || i===project.scenes.length-1} onClick={() => moveScene(i,1)}><ArrowDown size={14}/></button><button className="icon-button secondary scene-delete" title={t('removeScene')} aria-label={t('removeScene')} disabled={busy || project.scenes.length<=1} onClick={() => removeScene(i)}><Trash2 size={14}/></button></div></div><div className="scene-body">
           {images[i] && <div className={`image-preview ${project.aspect === '16:9' ? 'landscape':''}`}><img src={url(images[i].url)} alt={scene.title} /><span>{t(images[i].mode === 'demo' ? 'demoCard':images[i].mode === 'upload' ? 'yourImage':'aiImage')}</span></div>}
           <div className="scene-fields"><label>{t('prompt')}<textarea className="prompt" aria-label={`${t('prompt')} ${i+1}`} disabled={busy} value={scene.visualPrompt} maxLength={4000} dir="auto" onChange={e => editScene(i,'visualPrompt',e.target.value)} /></label><label>{t('screenText')}<input aria-label={`${t('screenText')} ${i+1}`} dir="auto" disabled={busy} value={scene.onScreenText} maxLength={160} onChange={e => editScene(i,'onScreenText',e.target.value)} /></label>{fileInput('image/png,image/jpeg,image/webp',file => uploadImage(i,file),t('uploadImage'))}</div></div></div>)}
       </article><article className="export-panel"><h2>03 / {t('export')}</h2><p className="muted">{project.aspect} · {project.duration} {t('seconds')} · 30 fps</p><div className="status-list"><p>{completeImages ? '✓':'○'} {t('images')}</p><p>{audio ? '✓':'○'} {t('narration')} {!audio && `(${t('optional')})`}</p><p>{hasCaptions ? '✓':'○'} {t('captions')}</p></div>
