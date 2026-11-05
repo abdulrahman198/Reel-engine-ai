@@ -4,17 +4,20 @@ const tinyPng = {
   name: 'handala-test.png',
   mimeType: 'image/png',
   buffer: Buffer.from(
-    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAAC' +
-    'AqQAAAC0lEQVR42mP8/x8AAwMCAO+/pXcAAAAASUVORK5CYII=',
+    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGP4z8AAAAMBAQDJ/pLvAAAAAElFTkSuQmCC',
     'base64',
   ),
 };
 
 test.beforeEach(async ({ page }) => {
+  await page.goto('/');
+  await page.evaluate(() => new Promise((resolve, reject) => {
+    const request = indexedDB.deleteDatabase('handala-studio-db');
+    request.onsuccess = () => resolve();
+    request.onerror = () => reject(request.error);
+    request.onblocked = () => reject(new Error('IndexedDB deletion blocked'));
+  }));
   await page.goto('/studio.html');
-  await expect(page.locator('.topbar')).toBeVisible();
-  await page.evaluate(() => new Promise((resolve, reject) => {\n    const request = indexedDB.deleteDatabase('handala-studio-db');\n    request.onsuccess = () => resolve();\n    request.onerror = () => reject(request.error);\n    request.onblocked = () => reject(new Error('IndexedDB deletion blocked'));\n  }));
-  await page.reload();
   await expect(page.locator('.topbar')).toBeVisible();
 });
 
