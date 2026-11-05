@@ -45,7 +45,9 @@ async function writeStudioProject(project){
 
 function Studio() {
   const [clips,setClips] = useState([]);
-  const [captions,setCaptions] = useState([]);\n  const [hydrated,setHydrated] = useState(false);\n  const clipsRef = useRef([]); clipsRef.current = clips;
+  const [captions,setCaptions] = useState([]);
+  const [hydrated,setHydrated] = useState(false);
+  const clipsRef = useRef([]); clipsRef.current = clips;
   const [selected,setSelected] = useState(null);
   const [playhead,setPlayhead] = useState(0);
   const [playing,setPlaying] = useState(false);
