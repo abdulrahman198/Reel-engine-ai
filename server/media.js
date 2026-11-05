@@ -4,7 +4,7 @@ import path from 'node:path';
 import sharp from 'sharp';
 import { HttpError } from './core.js';
 
-export function run(binary, args, { cwd, timeout = 180000, onProgress } = {}) {
+export function run(binary, args, { cwd, timeout = 180000, onProgress, captureStderr = false } = {}) {
   return new Promise((resolve, reject) => {
     const child = spawn(binary, args, { cwd, shell: false, windowsHide: true });
     let output = '', errors = '', expired = false;
@@ -14,7 +14,7 @@ export function run(binary, args, { cwd, timeout = 180000, onProgress } = {}) {
     child.once('error', error => { clearTimeout(timer); reject(new Error(`${binary}: ${error.code || 'could not start'}. Install FFmpeg/FFprobe or set their paths in .env.`)); });
     child.once('close', code => { clearTimeout(timer);
       if (expired) reject(new Error('Media processing timed out.'));
-      else if (code !== 0) reject(new Error(`Media processing failed: ${errors.slice(-1200)}`)); else resolve(output);
+      else if (code !== 0) reject(new Error(`Media processing failed: ${errors.slice(-1200)}`)); else resolve(captureStderr ? errors : output);
     });
   });
 }
@@ -37,7 +37,7 @@ export async function analyzeVideo(file, config) {
     throw new HttpError(400, 'invalid_video_duration', 'Video duration must be between 1 second and 10 minutes.');
   }
   const sceneOutput = await run(config.ffmpeg, ['-hide_banner', '-i', file, '-vf', "select='gt(scene,0.22)',metadata=print:file=-", '-an', '-f', 'null', '-'], { timeout: 120000 });
-  const silenceOutput = await run(config.ffmpeg, ['-hide_banner', '-i', file, '-vn', '-af', 'silencedetect=noise=-32dB:d=0.45', '-f', 'null', '-'], { timeout: 120000 }).catch(() => '');
+  const silenceOutput = await run(config.ffmpeg, ['-hide_banner', '-i', file, '-vn', '-af', 'silencedetect=noise=-32dB:d=0.45', '-f', 'null', '-'], { timeout: 120000, captureStderr: true }).catch(() => '');
   const scenes = [];
   const lines = sceneOutput.split(/\r?\n/);
   for (let i = 0; i < lines.length; i++) {
