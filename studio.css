@@ -7,3 +7,13 @@
 .subtitle-preview{position:absolute;left:6%;right:6%;bottom:7%;padding:8px 10px;background:rgba(0,0,0,.78);color:#fff;text-align:center;font-size:clamp(10px,1.15vw,17px);font-weight:700;white-space:pre-line;text-shadow:0 1px 2px #000;pointer-events:none}.secondary-import{background:#293143!important;color:#e4eaf4!important;border:1px solid #3c465b!important;margin-left:6px}
 
 .timeline-clip.caption{background:#4d365d;border-color:#8b63a6;color:#f5e9ff;cursor:default}
+
+
+/* Handala Studio usability and small-screen support */
+.top-actions>button,.top-actions>.import-button{background:#202635;border:1px solid #394356;color:#edf0f8;border-radius:9px;padding:10px 12px;font:inherit;cursor:pointer}
+.top-actions>button:disabled,.timeline-tools button:disabled{opacity:.4;cursor:not-allowed}
+.project-import{display:inline-flex;align-items:center;white-space:nowrap}
+.timeline-tools button{white-space:nowrap}
+@media(max-width:1100px){.editor-grid{grid-template-columns:190px minmax(260px,1fr) 230px;gap:10px;padding:10px}.topbar{padding:0 12px}.top-actions{gap:6px}.top-actions>button,.top-actions>.import-button{padding:8px;font-size:12px}}
+@media(max-width:760px){.topbar{height:auto;min-height:68px;align-items:flex-start;gap:10px;padding:12px;flex-wrap:wrap}.top-actions{width:100%;overflow-x:auto;padding-bottom:4px}.editor-grid{grid-template-columns:minmax(0,1fr);padding:8px}.media-panel{order:2;max-height:210px}.preview-panel{order:1;min-height:380px}.inspector{order:3}.stage{max-height:58vh}.timeline-panel{margin:8px;overflow:hidden}.timeline-scroll{overflow-x:auto}.timeline-toolbar{gap:8px;flex-wrap:wrap}.timeline-tools{flex-wrap:wrap}.timeline-tools button{padding:7px 9px}.asset-list{display:flex;overflow-x:auto}.asset{min-width:180px}.inspector{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.inspector>.panel-title,.inspector>.inspector-name,.inspector>.inspector-divider,.inspector>.hint,.inspector>.inspector-actions{grid-column:1/-1}.inspector label{min-width:0}.transport{gap:6px;padding:8px}.transport input{min-width:40px}.preview-head{padding:8px 10px}}
+@media(max-width:420px){.brand{font-size:12px}.brand-mark{width:34px;height:34px}.top-actions select{min-width:110px}.top-actions>button,.top-actions>.import-button{font-size:11px;padding:7px}.inspector{grid-template-columns:1fr}.preview-panel{min-height:330px}.stage{max-height:48vh}}
