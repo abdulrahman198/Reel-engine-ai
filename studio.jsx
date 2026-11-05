@@ -120,8 +120,11 @@ function Studio() {
   useEffect(()=>{
     if(!hydrated)return;
     const project={ratio,overlay,volume,textColor,textSize,textPosition,captions,clips:clips.map(({url,file,...c})=>({...c,blob:file||null}))};
-    writeStudioProject(project).then(()=>setNotice('Project saved locally with its media.')).catch(()=>setNotice('Local storage is full or unavailable. Export a project backup soon.'));
+    const timer=setTimeout(()=>{
+      writeStudioProject(project).then(()=>setNotice('Project saved locally with its media.')).catch(()=>setNotice('Local storage is full or unavailable. Export a project backup soon.'));
+    },650);
     try{localStorage.setItem(STORE,JSON.stringify({ratio,overlay,volume,textColor,textSize,textPosition}));}catch{}
+    return()=>clearTimeout(timer);
   },[clips,captions,ratio,overlay,volume,textColor,textSize,textPosition,hydrated]);
   useEffect(()=>{
     if(!hydrated)return;
