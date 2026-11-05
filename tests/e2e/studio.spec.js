@@ -32,7 +32,7 @@ test('image import, selection, timeline split, and local autosave/restore', asyn
   await expect(page.locator('.timeline-clip.image')).toHaveCount(1);
   await expect(page.locator('.inspector-name')).toContainText('handala-test.png');
 
-  await page.getByRole('slider', { name: 'Playhead' }).fill('2.5');
+  await page.getByRole('slider', { name: 'Playhead' }).evaluate(el => {\n    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(el, '2.5');\n    el.dispatchEvent(new Event('input', { bubbles: true }));\n    el.dispatchEvent(new Event('change', { bubbles: true }));\n  });
   await page.locator('.inspector-actions').getByRole('button', { name: /Split at playhead/ }).click();
   await expect(page.locator('.timeline-clip.image')).toHaveCount(2);
   await expect(page.locator('.footer')).toBeVisible().catch(() => {});
