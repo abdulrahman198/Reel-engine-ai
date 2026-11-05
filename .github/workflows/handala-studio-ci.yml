@@ -1,0 +1,30 @@
+name: Handala Studio CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main, "feature/handala-studio-editor"]
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install media tools
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg fonts-dejavu-core
+      - name: Install dependencies
+        run: npm ci
+      - name: Run automated tests
+        run: npm test
+      - name: Build both app entry points
+        run: npm run build

@@ -4,6 +4,8 @@ A working, single-user video studio: **idea → script → scene images → narr
 
 [دليل التشغيل بالعربي](START_HERE_AR.md)
 
+**Handala Studio timeline editor:** open `/studio.html` after starting the app. See [editor features and limitations](HANDALA_STUDIO.md).
+
 ## Open from a phone
 
 [Open in GitHub Codespaces](https://codespaces.new/abdulrahman198/Reel-engine-ai)
