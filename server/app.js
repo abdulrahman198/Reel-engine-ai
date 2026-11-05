@@ -4,10 +4,10 @@ import sharp from 'sharp';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { existsSync } from 'node:fs';
-import { writeFile } from 'node:fs/promises';
+import { writeFile, mkdir, mkdtemp, readFile, rm } from 'node:fs/promises';
 import { HttpError, options, scenes, aspect, text, normalizePlan, draftPlan, demoPlan, planSchema, captionsFromAlignment, toSrt, parseSrt } from './core.js';
 import { AssetStore, Jobs, ProjectStore, jsonFile } from './storage.js';
-import { capabilities, demoImage, probe, renderVideo, importAudio } from './media.js';
+import { capabilities, demoImage, probe, renderVideo, importAudio, run } from './media.js';
 import { frontendOrigin } from './config.js';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
@@ -181,6 +181,27 @@ export async function createApp({ env = process.env, openaiClient, fetchImpl = g
   app.post('/api/assets/captions', async (req, res) => {
     const cues = parseSrt(req.body?.srt);
     res.status(201).json(await assets.create('captions', Buffer.from(toSrt(cues)), { mode: 'upload', count: cues.length, duration: cues.at(-1).end }));
+  });
+
+  app.post('/api/studio/export/mp4', express.raw({ type: ['video/webm', 'video/mp4'], limit: '300mb' }), async (req, res, next) => {
+    if (!mediaCapabilities.ffmpeg || !mediaCapabilities.ffprobe) throw new HttpError(503, 'ffmpeg_missing', 'Install FFmpeg and FFprobe, then restart the server.');
+    if (!Buffer.isBuffer(req.body) || !req.body.length) throw new HttpError(400, 'video_required', 'Upload a rendered WebM video.');
+    const tmpRoot = path.join(config.dataDir, 'tmp');
+    await mkdir(tmpRoot, { recursive: true });
+    const dir = await mkdtemp(path.join(tmpRoot, 'studio-export-'));
+    const input = path.join(dir, 'source.webm'), output = path.join(dir, 'handala-studio.mp4');
+    try {
+      await writeFile(input, req.body);
+      await run(config.ffmpeg, ['-y', '-hide_banner', '-loglevel', 'error', '-i', input, '-map', '0:v:0', '-map', '0:a?', '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '20', '-pix_fmt', 'yuv420p', '-c:a', 'aac', '-b:a', '192k', '-movflags', '+faststart', output], { timeout: 600000 });
+      const info = await probe(output, config);
+      if (!info.streams?.some(stream => stream.codec_type === 'video')) throw new Error('MP4 verification failed: no video stream.');
+      res.set('Content-Type', 'video/mp4');
+      res.set('Content-Disposition', 'attachment; filename="handala-studio.mp4"');
+      res.sendFile(output, error => { void rm(dir, { recursive: true, force: true }); if (error && !res.headersSent) next(error); });
+    } catch (error) {
+      await rm(dir, { recursive: true, force: true });
+      throw error;
+    }
   });
 
   app.post('/api/render', async (req, res) => {
