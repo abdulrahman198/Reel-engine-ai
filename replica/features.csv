@@ -1,0 +1,27 @@
+feature,area,priority,original,clone,notes
+Import local video/image/audio,media,must,yes,yes,Implemented in studio.jsx importFiles
+Timeline lanes for video/audio/image/subtitles,timeline,must,yes,yes,Implemented; subtitle cues are not editable as normal clips
+Preview monitor and playback controls,preview,must,yes,yes,Implemented; verify real-time sync and browser behavior
+Select move trim split and delete clips,editing,must,yes,yes,Implemented; robustness and UX need test coverage
+Portrait landscape and square canvases,canvas,must,yes,yes,9:16 16:9 1:1 implemented
+SRT import and timed subtitle preview,subtitles,must,yes,yes,Implemented parseSrt and preview
+Portable project JSON with embedded media,projects,must,yes,yes,Implemented; memory scaling risks for large media
+Automatic local persistence,projects,must,yes,yes,IndexedDB with 650ms debounce
+Undo redo history,editing,must,yes,yes,50-step history and shortcuts
+WebM export,export,must,yes,yes,MediaRecorder canvas render
+MP4 export via FFmpeg endpoint,export,must,yes,yes,Conversion attempted with WebM fallback; test endpoint availability
+Clip brightness contrast saturation,editing,should,yes,yes,Implemented controls and preview/export filters
+Clip fades and opacity keyframes,editing,should,yes,yes,Implemented; verify edge cases and easing
+Title overlay controls,overlay,should,yes,yes,One global title only
+Imported audio mixing and gain,audio,should,yes,yes,Separate audio track supported; source video audio mixing not guaranteed
+Multi-layer compositing,compositing,could,no,no,Future enhancement; currently single active visual clip selection
+Multiple independent text layers,overlay,could,no,no,Currently one global overlay
+Transition library,transitions,could,no,no,Only basic fades; no transition types
+Speed controls and speed curves,editing,could,no,no,Not implemented
+Audio waveform display,audio,could,no,no,Not implemented
+Chroma key and motion tracking,effects,could,no,no,Not implemented
+Advanced color grading,effects,could,no,no,Not implemented
+Mobile touch-optimized timeline gestures,mobile,should,no,no,Needs manual device testing and gesture design
+Cross-device project sync,projects,could,no,skip,Would require auth/backend/storage architecture; not in single-user local scope
+Automatic transcription and translation,subtitles,could,no,skip,Imported SRT is the current subtitle path; could be integrated separately
+Stock media / third-party content marketplace,media,could,no,skip,Licensed catalogs and partner network out of scope

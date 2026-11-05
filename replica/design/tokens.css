@@ -1,0 +1,47 @@
+:root {
+  color-scheme: dark;
+  --hs-bg: #0b0d13;
+  --hs-surface: #11151e;
+  --hs-surface-raised: #10131b;
+  --hs-border: #252b38;
+  --hs-border-input: #596477;
+  --hs-text: #edf0f8;
+  --hs-text-muted: #a9b3c5;
+  --hs-accent: #d9f06a;
+  --hs-on-accent: #11170a;
+  --hs-danger: #ff9a9a;
+  --hs-success: #80e0ad;
+  --hs-warning: #f5c66a;
+  --hs-font-sans: Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+  --hs-font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+  --hs-text-xs: 10px;
+  --hs-text-sm: 12px;
+  --hs-text-base: 14px;
+  --hs-text-lg: 18px;
+  --hs-text-xl: 24px;
+  --hs-text-display: 32px;
+  --hs-space-1: 4px;
+  --hs-space-2: 8px;
+  --hs-space-3: 12px;
+  --hs-space-4: 16px;
+  --hs-space-6: 24px;
+  --hs-space-8: 32px;
+  --hs-radius-sm: 6px;
+  --hs-radius-md: 8px;
+  --hs-radius-lg: 12px;
+  --hs-radius-pill: 999px;
+  --hs-shadow-card: 0 1px 2px rgba(0,0,0,.25);
+  --hs-shadow-pop: 0 12px 32px rgba(0,0,0,.42);
+  --hs-motion-fast: 120ms;
+  --hs-motion-base: 200ms;
+  --hs-motion-ease: cubic-bezier(.2,.8,.2,1);
+}
+
+/* Utility mapping for the existing CSS codebase (not Tailwind; project does not use Tailwind). */
+.hs-bg { background: var(--hs-bg); }
+.hs-surface { background: var(--hs-surface); }
+.hs-text { color: var(--hs-text); }
+.hs-text-muted { color: var(--hs-text-muted); }
+.hs-accent { color: var(--hs-accent); }
+.hs-border { border-color: var(--hs-border); }
+.hs-focus-visible:focus-visible { outline: 2px solid var(--hs-accent); outline-offset: 2px; }
