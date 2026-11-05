@@ -173,29 +173,28 @@ function Studio() {
   useEffect(()=>{audioClips.forEach(c=>{const el=audioRefs.current[c.id];if(!el)return;const local=playhead-c.start+c.trimStart;if(playhead>=c.start&&playhead<c.start+(c.end-c.trimStart)){if(Math.abs(el.currentTime-local)>.5)try{el.currentTime=local;}catch{}el.volume=(volume/100)*((c.gain??100)/100);if(playing)el.play().catch(()=>{});else el.pause();}else el.pause();});},[playhead,playing,volume,clips]);
   useEffect(()=>()=>{new Set(clipsRef.current.map(c=>c.url).filter(Boolean)).forEach(url=>URL.revokeObjectURL(url));},[]);
 
-  function createAutomaticMontage(){
-    const sources=clips.filter(c=>c.kind==='video').sort((a,b)=>a.start-b.start);
-    if(!sources.length){setNotice('Import at least one video clip to create an automatic montage.');return;}
-    const segmentTarget=4.8;
-    let timeline=0;
-    const montage=[];
-    for(const source of sources){
-      const usable=Math.max(0,source.end-source.trimStart);
-      if(usable<=.08)continue;
-      const count=Math.max(1,Math.ceil(usable/segmentTarget));
-      for(let i=0;i<count;i++){
-        const offset=i*segmentTarget,length=Math.min(segmentTarget,usable-offset);
-        if(length<=.08)continue;
-        montage.push({...source,id:uid(),name:count>1?source.name+' · cut '+(i+1):source.name,
-          start:timeline,trimStart:source.trimStart+offset,end:source.trimStart+offset+length,
-          fadeIn:i===0?(source.fadeIn||0):0,fadeOut:i===count-1?(source.fadeOut||0):0,keyframes:[]});
-        timeline+=length;
+  async function createAutomaticMontage(){
+    const source=clips.filter(c=>c.kind==='video').sort((a,b)=>a.start-b.start)[0];
+    if(!source){setNotice('Import a video first.');return;}
+    if(!source.file){setNotice('The original video file is unavailable. Re-import it, then try again.');return;}
+    setExporting(true);setNotice('Analyzing video: detecting scene changes and silent sections…');
+    try{
+      const response=await fetch('/api/studio/analyze-video',{method:'POST',headers:{'Content-Type':source.file.type||'application/octet-stream'},body:source.file});
+      const analysis=await response.json();
+      if(!response.ok)throw new Error(analysis.detail||analysis.message||'Video analysis failed.');
+      const boundaries=[0,...(analysis.sceneChanges||[]).map(x=>x.time),analysis.duration].sort((a,b)=>a-b);
+      let raw=[];
+      for(let i=0;i<boundaries.length-1;i++){
+        const a=boundaries[i],b=boundaries[i+1];if(b-a<.35)continue;let pieces=[[a,b]];
+        for(const silence of (analysis.silenceRanges||[])){const next=[];for(const [p,q] of pieces){if(silence.end<=p||silence.start>=q){next.push([p,q]);continue;}if(silence.start-p>=.8)next.push([p,silence.start]);if(q-silence.end>=.8)next.push([silence.end,q]);}pieces=next;}
+        raw.push(...pieces.filter(([p,q])=>q-p>=.8));
       }
-    }
-    if(!montage.length){setNotice('The imported video clips have no usable duration.');return;}
-    setClips([...montage,...clips.filter(c=>c.kind!=='video')]);
-    setSelected(montage[0].id);setPlayhead(0);setPlaying(false);
-    setNotice('Automatic montage assembled: '+montage.length+' cuts, '+fmt(timeline)+' total. Review it, then export.');
+      if(!raw.length)raw=[[0,analysis.duration]];
+      let cursor=0;
+      const montage=raw.map(([a,b],index)=>{const item={...source,id:uid(),name:source.name+' · scene '+(index+1),start:cursor,trimStart:a,end:b,fadeIn:index===0?0.12:0,fadeOut:index===raw.length-1?0.18:0,keyframes:[]};cursor+=b-a;return item;});
+      setClips([...montage,...clips.filter(c=>c.kind!=='video')]);setSelected(montage[0].id);setPlayhead(0);setPlaying(false);
+      setNotice('Analysis complete: '+(analysis.sceneChanges||[]).length+' scene changes, '+(analysis.silenceRanges||[]).length+' silent ranges. Built '+montage.length+' cuts ('+fmt(cursor)+'). Review before export.');
+    }catch(error){setNotice('Automatic edit failed: '+error.message);}finally{setExporting(false);}
   }
   async function exportProject(){
     try{
@@ -321,7 +320,7 @@ function Studio() {
   }
   const pxPerSecond=34*zoom;
   return <div className="studio">
-    <header className="topbar"><a className="brand" href="/"><span className="brand-mark">ح</span><span>HANDALA <b>STUDIO</b><small>CREATIVE VIDEO WORKSPACE</small></span></a><div className="top-actions"><button onClick={exportProject} title="Download project backup">⇧ Save project</button><label className="import-button project-import">⇩ Open project<input type="file" accept=".json,application/json" onChange={e=>{importProjectFile(e.target.files?.[0]);e.target.value="";}}/></label><select value={ratio} onChange={e=>setRatio(e.target.value)} aria-label="Canvas aspect ratio"><option value="9:16">Portrait 9:16</option><option value="16:9">Landscape 16:9</option><option value="1:1">Square 1:1</option></select><button onClick={createAutomaticMontage} disabled={exporting||!clips.some(c=>c.kind==='video')} title="Automatically split and sequence imported video">✦ Auto montage</button><button className="primary" onClick={exportVideo} disabled={exporting||!clips.length}>{exporting?'Rendering…':'⇩ Export video'}</button></div></header>
+    <header className="topbar"><a className="brand" href="/"><span className="brand-mark">ح</span><span>HANDALA <b>STUDIO</b><small>CREATIVE VIDEO WORKSPACE</small></span></a><div className="top-actions"><button onClick={exportProject} title="Download project backup">⇧ Save project</button><label className="import-button project-import">⇩ Open project<input type="file" accept=".json,application/json" onChange={e=>{importProjectFile(e.target.files?.[0]);e.target.value="";}}/></label><select value={ratio} onChange={e=>setRatio(e.target.value)} aria-label="Canvas aspect ratio"><option value="9:16">Portrait 9:16</option><option value="16:9">Landscape 16:9</option><option value="1:1">Square 1:1</option></select><button onClick={createAutomaticMontage} disabled={exporting||!clips.some(c=>c.kind==='video')} title="Automatically split and sequence imported video">✦ Auto montage</button><button onClick={createAutomaticMontage} disabled={exporting||!clips.some(c=>c.kind==='video')} title="Analyze scene changes and remove long silences">✦ Auto edit</button><button className="primary" onClick={exportVideo} disabled={exporting||!clips.length}>{exporting?'Rendering…':'⇩ Export video'}</button></div></header>
     <main className="editor-grid">
       <aside className="media-panel"><div className="panel-title"><span>MEDIA LIBRARY</span><label className="import-button">＋ Import<input type="file" multiple accept="video/*,image/*,audio/*" onChange={e=>{importFiles(e.target.files);e.target.value='';}}/></label><label className="import-button secondary-import">＋ SRT<input type="file" accept=".srt,text/plain" onChange={e=>{importSrt(e.target.files?.[0]);e.target.value='';}}/></label></div><p className="hint">Media and project timeline are saved in this browser using local storage.</p><div className="asset-list">{clips.map(c=><button key={c.id} className={'asset '+(selected===c.id?'chosen':'')} onClick={()=>setSelected(c.id)}><span className="asset-icon">{c.kind==='video'?'▶':c.kind==='audio'?'♫':'▧'}</span><span className="asset-name">{c.name}</span><small>{c.kind.toUpperCase()}</small></button>)}</div><div className="panel-foot">LOCAL PROJECT · MEDIA + TIMELINE AUTO-SAVED</div></aside>
       <section className="preview-panel"><div className="preview-head"><span>PREVIEW MONITOR</span><span>{ratio} · {fmt(playhead)} / {fmt(duration)}</span></div><div className={'stage '+(ratio==='16:9'?'wide':ratio==='1:1'?'square':'portrait')}><div className="stage-content">{activeVideo?.kind==='video'?<video ref={videoRef} muted playsInline style={{filter:activeVideo?`brightness(${activeVideo.brightness??100}%) contrast(${activeVideo.contrast??100}%) saturate(${activeVideo.saturation??100}%)`:'none',opacity:activeVideo?Math.min(1,(activeVideo.fadeIn?(playhead-activeVideo.start)/activeVideo.fadeIn:1),(activeVideo.fadeOut?(activeVideo.end-activeVideo.trimStart-(playhead-activeVideo.start))/activeVideo.fadeOut:1))*opacityAt(activeVideo,playhead-activeVideo.start):1}} />:activeVideo?.kind==='image'?<img src={activeVideo.url} style={{filter:`brightness(${activeVideo.brightness??100}%) contrast(${activeVideo.contrast??100}%) saturate(${activeVideo.saturation??100}%)`,opacity:Math.min(1,(activeVideo.fadeIn?(playhead-activeVideo.start)/activeVideo.fadeIn:1),(activeVideo.fadeOut?(activeVideo.end-activeVideo.trimStart-(playhead-activeVideo.start))/activeVideo.fadeOut:1))*opacityAt(activeVideo,playhead-activeVideo.start)}} />:<div className="stage-empty"><span>ح</span><b>HANDALA STUDIO</b><small>Import media to start editing</small></div>}{overlay&&<div className={'preview-caption '+textPosition} style={{color:textColor,fontSize:textSize+'%'}}>{overlay}</div>}{activeCaption&&<div className="subtitle-preview">{activeCaption.text}</div>}</div></div><div className="transport"><button onClick={()=>setPlayhead(0)} title="Go to start">|◀</button><button className="play" onClick={()=>setPlaying(x=>!x)}>{playing?'Ⅱ':'▶'}</button><button onClick={()=>{setPlayhead(duration);setPlaying(false);}} title="Go to end">▶|</button><span>{fmt(playhead)}</span><input aria-label="Playhead" type="range" min="0" max={duration} step=".05" value={Math.min(playhead,duration)} onChange={e=>setPlayhead(+e.target.value)}/><span>{fmt(duration)}</span></div><canvas ref={canvasRef} className="hidden-canvas" /></section>
