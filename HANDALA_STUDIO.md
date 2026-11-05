@@ -10,6 +10,7 @@ Handala Studio is an additional timeline-editing workspace inside Reel Engine AI
 - Playback controls, timeline seeking, zoom, clip selection, clip positioning, trim-in/trim-out, split-at-playhead, and delete.
 - Per-clip brightness, contrast, saturation, fade-in, and fade-out controls.
 - Editable title overlay with size, color, and top/center/bottom placement.
+- Import SRT subtitle files, preview timed cues, and render them into the export; subtitle cues are visible on their own timeline lane.
 - Import timed subtitles from SRT; cues appear in the preview and rendered export.
 - Audio clip volume control and timeline audio mixing for imported audio.
 - Automatic local project persistence using IndexedDB, including imported media blobs, so the edit can be restored in the same browser.
