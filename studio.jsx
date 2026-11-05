@@ -169,6 +169,8 @@ function Studio() {
           ctx.fillStyle=textColor;ctx.textAlign='center';ctx.font='bold '+Math.round(w*.045*textSize/100)+'px Arial';
           const y=textPosition==='top'?h*.16:textPosition==='center'?h*.52:h*.89;ctx.fillText(overlay.slice(0,80),w/2,y,w*.88);
         }
+        const cue=captions.find(item=>t>=item.start&&t<=item.end);
+        if(cue){ctx.font='bold '+Math.round(w*.035)+'px Arial';ctx.textAlign='center';const lines=cue.text.split('\\n').slice(0,3);const lineH=Math.round(w*.045);const boxH=lines.length*lineH+24;ctx.fillStyle='rgba(0,0,0,.72)';ctx.fillRect(w*.06,h*.86-boxH,w*.88,boxH);ctx.fillStyle='#fff';lines.forEach((line,index)=>ctx.fillText(line,w/2,h*.86-boxH+lineH*(index+1),w*.82));}
         if(t<total&&recorder.state==='recording')requestAnimationFrame(draw);
         else if(recorder.state==='recording')recorder.stop();
       };
