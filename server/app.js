@@ -7,7 +7,7 @@ import { existsSync } from 'node:fs';
 import { writeFile, mkdir, mkdtemp, readFile, rm } from 'node:fs/promises';
 import { HttpError, options, scenes, aspect, text, normalizePlan, draftPlan, demoPlan, planSchema, captionsFromAlignment, toSrt, parseSrt } from './core.js';
 import { AssetStore, Jobs, ProjectStore, jsonFile } from './storage.js';
-import { capabilities, demoImage, probe, renderVideo, importAudio, run } from './media.js';
+import { capabilities, demoImage, probe, renderVideo, importAudio, analyzeVideo, run } from './media.js';
 import { frontendOrigin } from './config.js';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
@@ -181,6 +181,22 @@ export async function createApp({ env = process.env, openaiClient, fetchImpl = g
   app.post('/api/assets/captions', async (req, res) => {
     const cues = parseSrt(req.body?.srt);
     res.status(201).json(await assets.create('captions', Buffer.from(toSrt(cues)), { mode: 'upload', count: cues.length, duration: cues.at(-1).end }));
+  });
+
+  app.post('/api/studio/analyze-video', express.raw({ type: ['video/*', 'application/octet-stream'], limit: '300mb' }), async (req, res) => {
+    if (!mediaCapabilities.ffmpeg || !mediaCapabilities.ffprobe) throw new HttpError(503, 'ffmpeg_missing', 'Install FFmpeg and FFprobe, then restart the server.');
+    if (!Buffer.isBuffer(req.body) || !req.body.length) throw new HttpError(400, 'video_required', 'Upload a video file to analyze.');
+    const tmpRoot = path.join(config.dataDir, 'tmp');
+    await mkdir(tmpRoot, { recursive: true });
+    const dir = await mkdtemp(path.join(tmpRoot, 'studio-analysis-'));
+    try {
+      const input = path.join(dir, 'source-video');
+      await writeFile(input, req.body);
+      const analysis = await analyzeVideo(input, config);
+      res.json(analysis);
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
   });
 
   app.post('/api/studio/export/mp4', express.raw({ type: ['video/webm', 'video/mp4'], limit: '300mb' }), async (req, res, next) => {
