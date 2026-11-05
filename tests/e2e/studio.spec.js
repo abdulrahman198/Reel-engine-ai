@@ -13,7 +13,7 @@ const tinyPng = {
 test.beforeEach(async ({ page }) => {
   await page.goto('/studio.html');
   await expect(page.locator('.topbar')).toBeVisible();
-  await page.evaluate(() => indexedDB.deleteDatabase('handala-studio-db'));
+  await page.evaluate(() => new Promise((resolve, reject) => {\n    const request = indexedDB.deleteDatabase('handala-studio-db');\n    request.onsuccess = () => resolve();\n    request.onerror = () => reject(request.error);\n    request.onblocked = () => reject(new Error('IndexedDB deletion blocked'));\n  }));
   await page.reload();
   await expect(page.locator('.topbar')).toBeVisible();
 });
@@ -58,7 +58,7 @@ test('project backup exports a JSON download', async ({ page }) => {
   await page.locator('.media-panel input[type=file]').setInputFiles(tinyPng);
   await expect(page.locator('.timeline-clip.image')).toHaveCount(1);
   const downloadPromise = page.waitForEvent('download');
-  await page.getByRole('button', { name: /Save project backup/i }).click();
+  await page.getByRole('button', { name: /Save project/i }).first().click();
   const download = await downloadPromise;
   expect(download.suggestedFilename()).toBe('handala-studio-project.json');
 });
