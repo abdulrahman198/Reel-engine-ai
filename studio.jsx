@@ -6,6 +6,15 @@ const STORE = 'handala-studio-project-v1';
 const uid = () => Math.random().toString(36).slice(2, 10);
 const fmt = n => { const s=Math.max(0,n||0); return Math.floor(s/60)+':'+String(Math.floor(s%60)).padStart(2,'0')+'.'+String(Math.floor((s%1)*10)); };
 const clamp = (v,a,b) => Math.min(b,Math.max(a,v));
+function parseSrt(input){
+  const stamp=value=>{const m=value.trim().match(/^(\d{2}):(\d{2}):(\d{2})[,.](\d{1,3})$/);return m?Number(m[1])*3600+Number(m[2])*60+Number(m[3])+Number(m[4].padEnd(3,'0'))/1000:null;};
+  return input.replace(/\r/g,'').trim().split(/\n\s*\n/).map(block=>{
+    const lines=block.split('\n'),i=lines.findIndex(line=>line.includes('-->'));if(i<0)return null;
+    const times=lines[i].split('-->').map(x=>x.trim()),start=stamp(times[0]),end=stamp(times[1]);
+    const text=lines.slice(i+1).join('\n').trim();return start!==null&&end!==null&&end>start&&text?{id:uid(),start,end,text}:null;
+  }).filter(Boolean);
+}
+
 const DB_NAME = 'handala-studio-db';
 function openStudioDb(){
   return new Promise((resolve,reject)=>{
