@@ -109,10 +109,17 @@ function Studio() {
         else if(recorder.state==='recording')recorder.stop();
       };
       requestAnimationFrame(draw);await done;
-      const blob=new Blob(chunks,{type:'video/webm'}),link=document.createElement('a');
-      link.href=URL.createObjectURL(blob);link.download='handala-studio-export.webm';link.click();
+      const blob=new Blob(chunks,{type:'video/webm'});
+      setNotice('Converting export to MP4 with FFmpeg…');
+      let finalBlob=blob,filename='handala-studio-export.webm';
+      try{
+        const response=await fetch('/api/studio/export/mp4',{method:'POST',headers:{'Content-Type':'video/webm'},body:blob});
+        if(!response.ok){const detail=await response.json().catch(()=>({}));throw new Error(detail.detail||'MP4 conversion is unavailable.');}
+        finalBlob=await response.blob();filename='handala-studio.mp4';
+      }catch(error){setNotice('MP4 conversion unavailable; downloading WebM instead. '+error.message);}
+      const link=document.createElement('a');link.href=URL.createObjectURL(finalBlob);link.download=filename;link.click();
       setTimeout(()=>URL.revokeObjectURL(link.href),30000);
-      setNotice('Export complete. Downloaded WebM video with the timeline audio mix.');
+      if(filename.endsWith('.mp4'))setNotice('Export complete. MP4 created and downloaded.');
     }catch(e){
       if(recorder?.state==='recording')recorder.stop();
       setNotice('Export failed: '+e.message);
