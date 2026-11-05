@@ -66,7 +66,7 @@ function Studio() {
   const rafRef = useRef(0);
   const startRef = useRef(0);
   const selectedClip = clips.find(c=>c.id===selected) || null;
-  const duration = Math.max(10,...clips.map(c=>c.start+c.end-c.trimStart));
+  const duration = Math.max(10,...clips.map(c=>c.start+c.end-c.trimStart),...captions.map(c=>c.end));
   const activeVideo = clips.filter(c=>c.kind==='video' || c.kind==='image').find(c=>playhead>=c.start && playhead<c.start+(c.end-c.trimStart)) || null;
   const audioClips = clips.filter(c=>c.kind==='audio');
   const activeCaption = captions.find(c=>playhead>=c.start&&playhead<=c.end) || null;
