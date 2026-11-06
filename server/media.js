@@ -4,7 +4,7 @@ import path from 'node:path';
 import sharp from 'sharp';
 import { HttpError } from './core.js';
 
-export function run(binary, args, { cwd, timeout = 180000, onProgress } = {}) {
+export function run(binary, args, { cwd, timeout = 180000, onProgress, captureStderr = false } = {}) {
   return new Promise((resolve, reject) => {
     const child = spawn(binary, args, { cwd, shell: false, windowsHide: true });
     let output = '', errors = '', expired = false;
@@ -14,7 +14,7 @@ export function run(binary, args, { cwd, timeout = 180000, onProgress } = {}) {
     child.once('error', error => { clearTimeout(timer); reject(new Error(`${binary}: ${error.code || 'could not start'}. Install FFmpeg/FFprobe or set their paths in .env.`)); });
     child.once('close', code => { clearTimeout(timer);
       if (expired) reject(new Error('Media processing timed out.'));
-      else if (code !== 0) reject(new Error(`Media processing failed: ${errors.slice(-1200)}`)); else resolve(output);
+      else if (code !== 0) reject(new Error(`Media processing failed: ${errors.slice(-1200)}`)); else resolve(captureStderr ? errors : output);
     });
   });
 }
@@ -26,6 +26,48 @@ export async function probe(file, config) {
 export async function capabilities(config) {
   const [ffmpeg, ffprobe] = await Promise.allSettled([run(config.ffmpeg, ['-hide_banner', '-filters'], { timeout: 10000 }), run(config.ffprobe, ['-version'], { timeout: 10000 })]);
   return { ffmpeg: ffmpeg.status === 'fulfilled', ffprobe: ffprobe.status === 'fulfilled', subtitles: ffmpeg.status === 'fulfilled' && /\bsubtitles\b/.test(ffmpeg.value) };
+}
+
+export async function analyzeVideo(file, config) {
+  const info = await probe(file, config);
+  const video = info.streams?.find(stream => stream.codec_type === 'video');
+  if (!video) throw new HttpError(400, 'video_stream_required', 'The uploaded file must contain a video stream.');
+  const duration = Number(info.format?.duration);
+  if (!Number.isFinite(duration) || duration <= 0 || duration > 600) {
+    throw new HttpError(400, 'invalid_video_duration', 'Video duration must be between 1 second and 10 minutes.');
+  }
+  const sceneOutput = await run(config.ffmpeg, ['-hide_banner', '-i', file, '-vf', "select='gt(scene,0.22)',metadata=print:file=-", '-an', '-f', 'null', '-'], { timeout: 120000 });
+  const silenceOutput = await run(config.ffmpeg, ['-hide_banner', '-i', file, '-vn', '-af', 'silencedetect=noise=-32dB:d=0.45', '-f', 'null', '-'], { timeout: 120000, captureStderr: true }).catch(() => '');
+  const scenes = [];
+  const lines = sceneOutput.split(/\r?\n/);
+  for (let i = 0; i < lines.length; i++) {
+    const pts = lines[i].match(/pts_time:([0-9.]+)/);
+    const score = lines[i].match(/lavfi\.scene_score=([0-9.]+)/);
+    if (pts) {
+      const time = Number(pts[1]);
+      if (Number.isFinite(time) && time > 0.15 && time < duration - 0.15) {
+        const nextScore = lines.slice(i, i + 4).map(line => line.match(/lavfi\.scene_score=([0-9.]+)/)).find(Boolean);
+        scenes.push({ time, score: nextScore ? Number(nextScore[1]) : score ? Number(score[1]) : 0 });
+      }
+    }
+  }
+  const silences = [];
+  let openSilence = null;
+  for (const match of silenceOutput.matchAll(/silence_start: ([0-9.]+)/g)) openSilence = Number(match[1]);
+  for (const match of silenceOutput.matchAll(/silence_end: ([0-9.]+) \| silence_duration: ([0-9.]+)/g)) {
+    const start = Number(match[1]) - Number(match[2]), end = Number(match[1]);
+    if (Number.isFinite(start) && Number.isFinite(end) && end - start >= 0.45) silences.push({ start: Math.max(0, start), end: Math.min(duration, end) });
+    openSilence = null;
+  }
+  if (openSilence !== null && duration - openSilence >= 0.45) silences.push({ start: openSilence, end: duration });
+  const cuts = [0, ...scenes.map(scene => scene.time), duration].sort((a,b)=>a-b);
+  const segments = cuts.slice(0,-1).map((start,index)=>({ start, end: cuts[index+1], duration: cuts[index+1]-start }));
+  return {
+    duration, width: video.width, height: video.height, fps: video.r_frame_rate || null,
+    hasAudio: !!info.streams.some(stream => stream.codec_type === 'audio'),
+    sceneChanges: scenes, silenceRanges: silences, segments,
+    recommendation: 'Scene changes and silence are detected automatically. Review the proposed cuts before export.'
+  };
 }
 
 export async function importAudio(bytes, config) {

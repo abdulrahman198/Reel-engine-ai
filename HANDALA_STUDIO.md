@@ -5,6 +5,7 @@ Handala Studio is an additional timeline-editing workspace inside Reel Engine AI
 ## Current editor features
 
 - Import local video, image, and audio files.
+- **Auto Edit (first analysis pass):** send an uploaded video to the local FFmpeg service, detect visual scene changes, detect audio silence (threshold −32 dB for at least 0.45 seconds), remove long silent spans, and assemble the retained segments sequentially for review.
 - Multi-lane timeline with video, audio, overlay/image, and subtitle tracks.
 - Preview monitor with portrait 9:16, landscape 16:9, and square 1:1 canvases.
 - Playback controls, timeline seeking, zoom, clip selection, clip positioning, trim-in/trim-out, split-at-playhead, and delete.
@@ -26,6 +27,8 @@ Start the app as described in the main README, then open:
 In GitHub Codespaces, open the forwarded port 8787 and append `/studio.html` to the app URL.
 
 ## Important limitations
+
+Auto Edit currently analyzes one source video at a time and uses FFmpeg's scene-change threshold. It does not yet rank semantic highlights, understand speech, generate subtitles from speech, or automatically mix source-camera audio into a final soundtrack. Scene/silence detection is a first-pass edit proposal and must be reviewed before publishing.
 
 This is an early-access editor, not a complete CapCut replacement. It currently has one global title layer and simple opacity keyframes/fades rather than a full transitions library. Multi-layer compositing, speed curves, chroma key, motion tracking, waveform rendering, advanced color grading, and mobile touch-optimized timeline gestures are still future work. Video clip source-audio mixing is not guaranteed; add audio as a separate audio clip for a reliable soundtrack.
 
